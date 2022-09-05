@@ -1,26 +1,43 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { DebugTrackerFactory } from './debug-tracker';
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
-	
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "debug-adapter-vscode" is now active!');
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('debug-adapter-vscode.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from debug-adapter-vscode!');
-	});
-
-	context.subscriptions.push(disposable);
+export interface IDebuggerTracker {
+	nonce: string;
 }
 
-// this method is called when your extension is deactivated
-export function deactivate() {}
+export interface IDebuggerTrackerSubscribeArgBodyV1 {
+	handler: (arg: any) => void;
+}
+
+export interface IDebuggerTrackerSubscribeArg {
+	version: number;
+	debuggers: [];
+}
+
+class DebugTrackerVSCode {
+	private tracker: DebugTrackerFactory;
+	constructor(private context: vscode.ExtensionContext) {
+		console.log(`VSCode extension "debug-tracker-vscode" is now active from ${context.extensionPath}`);
+		context.subscriptions.push(
+			vscode.commands.registerCommand('debug-tracker-vscode.activate', () => {})
+		);
+
+		this.tracker = DebugTrackerFactory.register(context);
+	}
+
+	public subscribe(debuggers: string[]): string {
+
+	}
+}
+
+// The return value can be used by client extensions and they can use all the public
+// methods in the DebugTrackerVSCode as an API
+export function activate(context: vscode.ExtensionContext) {
+
+	return new DebugTrackerVSCode(context);
+}
+
+export function deactivate() { }
