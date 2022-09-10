@@ -108,4 +108,4 @@ typings/
 
 dist/*
 # We want to keep this for now
-!dist/extension.d.ts
+!dist/index.d.ts

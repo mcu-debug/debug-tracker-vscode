@@ -124,8 +124,31 @@ export interface IDebuggerTrackerSubscribeArg {
     version: number;
     body: IDebuggerTrackerSubscribeArgBodyV1;
 }
-/** Our primary interface to other extensions */
-export declare class DebugTracker {
+/** The main interface to the tracker */
+export interface IDebugTracker {
+    /**
+     * Should be the first call, to register to track debugers.
+     * @param arg See {@link IDebuggerTrackerSubscribeArg }
+     * @returns A string is it is an error (like malformed arg) or an {@link IDebuggerSubscription} if success
+     */
+    subscribe(arg: IDebuggerTrackerSubscribeArg): IDebuggerSubscription | string;
+    /**
+     *
+     * @param clientId An id that was returned in {@link IDebuggerSubscription}, when {@link subscribe} was called
+     */
+    unsubscribe(clientId: string): void;
+    /**
+     * @param sessionId This is the ID of the debug session that is part of vscode.DebugSession
+     * @returns Returns the current status of a session. This can be DebugSessionStatus.Unknown if the session does not exist anymore
+     */
+    getSessionStatus(sessionId: string): DebugSessionStatus;
+    /**
+     * @param sessionId This is the ID of the debug session that is part of vscode.DebugSession
+     * @returns Returns the session information. This can be `undefined` if the session does not exist anymore
+     */
+    getSessionInfo(sessionId: string): ITrackedDebugSession | undefined;
+}
+export declare class DebugTracker implements IDebugTracker {
     private context;
     private tracker;
     constructor(context: vscode.ExtensionContext);
@@ -151,6 +174,3 @@ export declare class DebugTracker {
      */
     getSessionInfo(sessionId: string): ITrackedDebugSession | undefined;
 }
-export declare function activate(context: vscode.ExtensionContext): DebugTracker;
-export declare function deactivate(): void;
-//# sourceMappingURL=extension.d.ts.map

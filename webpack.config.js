@@ -45,4 +45,30 @@ const extensionConfig = {
     level: "log", // enables logging required for problem matchers
   },
 };
-module.exports = [ extensionConfig ];
+
+const libConfig = {
+  target: 'node',
+  entry: './src/index.ts',
+	mode: 'none',
+  module: {
+    rules: [
+      {
+        test: /\.ts?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/,
+      },
+    ],
+  },
+  resolve: {
+    extensions: ['.ts', '.js'],
+  },
+  externals: {
+    vscode: 'commonjs vscode'
+  },
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'index.js',
+    library: 'DebugTracker'
+  }
+}
+module.exports = [ extensionConfig, libConfig ];

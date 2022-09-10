@@ -11,10 +11,10 @@ vsc-extension-quickstart.md
 **/.eslintrc.json
 **/*.map
 **/*.ts
-dist/**
 **/*.vsix
 **/*.tgz
 .eslintignore
 .vscodeignore
+dist/extension.*
 
-!dist/extension.d.ts
+!dist/index.d.ts

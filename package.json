@@ -1,13 +1,17 @@
 {
   "name": "debug-tracker-vscode",
   "displayName": "debug-tracker-vscode",
-  "description": "A generic debug adapter that provides API/Event services for other extensions",
+  "description": "A generic debug tracker that provides API/Event services for other extensions. It exposes the APU as an extension or you can embed the library in your extension",
   "version": "0.0.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/mcu-debug/debug-tracker-vscode.git"
   },
   "publisher": "mcu-debug",
+  "keywords": [
+    "debugger",
+    "tracker"
+  ],
   "license": "MIT",
   "engines": {
     "vscode": "^1.70.0"
@@ -22,7 +26,7 @@
     "onCommand:debug-tracker-vscode.activate"
   ],
   "main": "./dist/extension.js",
-  "types": "./dist/extension.d.ts",
+  "types": "./dist/index.d.ts",
   "contributes": {
     "commands": [
       {
@@ -33,8 +37,9 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
+    "compilex": "webpack && cp out/dist/index.d.ts dist/index.d.ts",
     "compile": "webpack && npm run build:types",
-    "build:types": "tsc -d --declarationDir dist --declarationMap --emitDeclarationOnly src/extension.ts",
+    "build:types": "tsc -d --declarationDir dist --emitDeclarationOnly src/exports.ts && mv dist/exports.d.ts dist/index.d.ts",
     "watch": "webpack --watch",
     "package": "webpack --mode production --devtool hidden-source-map && npm run build:types",
     "compile-tests": "tsc -p . --outDir out",

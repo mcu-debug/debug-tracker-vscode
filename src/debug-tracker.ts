@@ -1,8 +1,5 @@
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
@@ -13,8 +10,7 @@ import {
     IDebuggerTrackerSubscribeArg,
     ITrackedDebugSession,
     OtherDebugEvents
-} from './extension';
-import { nextTick } from 'process';
+} from './exports';
 
 export interface ITrackedDebugSessionXfer {
     sessionId: string;
@@ -271,14 +267,14 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
                 DebugClients[daName] = [item];
             }
             if (arg.body.wantCurrentStatus) {
-                nextTick(() => {
+                setTimeout(() => {
                     for (const [_id, tracker] of Object.entries(AllSessionsById)) {
                         tracker.notifyCurrentStatus(uuid);
                         if ((daName === '*') || (daName === tracker.session.type)) {
                             tracker.notifyCurrentStatus(uuid);
                         }
                     }
-                });
+                }, 0);
             }
             if (arg.body.notifyAllEvents) {
                 existing = DebugEventClients[daName];
@@ -344,6 +340,9 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
     }
 }
 
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 function appendMsgToTmpDir(str: string, obj: any) {
     // eslint-disable-next-line no-constant-condition
     if (true) {
@@ -361,4 +360,3 @@ function appendMsgToTmpDir(str: string, obj: any) {
         }
     }
 }
-
