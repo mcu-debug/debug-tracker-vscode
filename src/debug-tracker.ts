@@ -3,88 +3,55 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import events from 'events';
+import { v4 as uuidv4 } from 'uuid';
 
-export type DebugSessionStatus = 'started' | 'running' | 'stopped' | 'terminated' | 'unknown';
+import {
+    DebugEventHandler,
+    DebugSessionStatus,
+    IDebuggerSubscription,
+    IDebuggerTrackerEvent,
+    IDebuggerTrackerSubscribeArg,
+    ITrackedDebugSession,
+    OtherDebugEvents
+} from './extension';
+import { nextTick } from 'process';
 
-export const TrackedDebuggers = [
-    'cortex-debug',
-    'cppdbg',       // Microsoft debugger
-    'cspy'          // IAR debugger
-];
-
-export interface ITrackedDebugSession {
-    session: vscode.DebugSession;
-    canWriteMemory: boolean | undefined;
-    canReadMemory: boolean | undefined;
+export interface ITrackedDebugSessionXfer {
+    sessionId: string;
+    sessionName: string;
+    sessionType: string;
+    wsFolder: string;
+    canWriteMemory: boolean;
+    canReadMemory: boolean;
     status: DebugSessionStatus;
+    frameId?: number;
 }
 
+class ClientInfo {
+    constructor(public clientId: string, public handler: DebugEventHandler) { }
+}
+
+const DebugClients: { [debugAdapter: string]: ClientInfo[] } = {};
+const DebugEventClients: { [debugAdapter: string]: ClientInfo[] } = {};
+const AllSessionsById: { [sessionId: string]: DebuggerTracker } = {};
+
 export class DebuggerTracker implements vscode.DebugAdapterTracker {
-    // Events: There is an event generated whenever the status changes. There is also
-    // a generic 'any' event. They all use the same arg of type ITrackedDebugSessionXfer
-    // There is an additional event used internally for read/write capability detection
-    public static eventEmitter = new events.EventEmitter();
+    private fistStackTrace: DebugProtocol.StackTraceResponse | undefined;
+    private isTerminated = false;
+    public status = DebugSessionStatus.Unknown;
 
-    private static allSessionsById: { [sessionId: string]: ITrackedDebugSession } = {};
-    private static allSessionsByConfigName: { [configName: string]: ITrackedDebugSession } = {};
-
-    private lastFrameId: number | undefined = undefined;
     constructor(public session: vscode.DebugSession) {
-        if (TrackedDebuggers.includes(session.type)) {
-            const props: ITrackedDebugSession = {
-                session: session,
-                canWriteMemory: undefined,
-                canReadMemory: undefined,
-                status: 'unknown'
-            };
-            DebuggerTracker.allSessionsById[session.id] = props;
-            DebuggerTracker.allSessionsByConfigName[session.name] = props;
-            DebuggerTracker.setStatus(session, 'started');
-        }
+        AllSessionsById[session.id] = this;
+        DebuggerTracker.setStatus(session, DebugSessionStatus.Initializing);
     }
 
-    public static getCurrentSessionsSerializable(): ITrackedDebugSessionXfer[] {
-        const ret: ITrackedDebugSessionXfer[] = [];
-        for (const [_key, value] of Object.entries(DebuggerTracker.allSessionsById)) {
-            if (value.canReadMemory) {
-                ret.push(DebuggerTracker.toSerilazable(value));
-            }
-        }
-        return ret;
-    }
-
-    public static toSerilazable(value: ITrackedDebugSession): ITrackedDebugSessionXfer {
-        const tmp: ITrackedDebugSessionXfer = {
-            sessionId: value.session.id,
-            sessionName: value.session.name,
-            sessionType: value.session.type,
-            wsFolder: value.session.workspaceFolder?.uri.toString() || '.',
-            canWriteMemory: !!value.canWriteMemory,
-            canReadMemory: !!value.canReadMemory,
-            status: value.status
-        };
-        return tmp;
-    }
-
-    public static isValidSessionForMemory(id: string): string | boolean {
-        const session = DebuggerTracker.allSessionsById[id];
-        if (!session) {
-            return 'No session with the session id ' + id +
-                '. Probably a bug or a debugger type that we are not tracking';
-        }
-        if (!session.canReadMemory) {
-            return 'The current debugger does provide a memory read API';
-        }
-        return true;
-    }
-
-    public static getSessionById(id: string): ITrackedDebugSession {
-        return DebuggerTracker.allSessionsById[id];
+    public static getSessionById(id: string): DebuggerTracker {
+        return AllSessionsById[id];
     }
 
     public onDidSendMessage(msg: any): void {
-        appendMsgToTmpDir('s ' + JSON.stringify(msg));
+        if (this.isTerminated) return;
+        appendMsgToTmpDir('s ', msg);
         const message = msg as DebugProtocol.ProtocolMessage;
         if (!message) {
             return;
@@ -94,22 +61,39 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
                 const ev: DebugProtocol.Event = message as DebugProtocol.Event;
                 if (ev) {
                     if (ev.event === 'stopped') {
-                        this.lastFrameId = undefined;
+                        this.fistStackTrace = undefined;
+                        DebuggerTracker.setStatus(this.session, DebugSessionStatus.Stopped, ev as DebugProtocol.StoppedEvent);
+                        return;
                     } else if (ev.event === 'continued') {
-                        // cppdbg does not issue a continued event
-                        DebuggerTracker.setStatus(this.session, 'running');
+                        // A debug adapter does not have to issue a continued event
+                        DebuggerTracker.setStatus(this.session, DebugSessionStatus.Running);
+                        return;
                     } else if (ev.event === 'capabilities') {
                         const capabilities = ev.body?.capabilities as DebugProtocol.Capabilities;
                         if (capabilities) {
-                            DebuggerTracker.setCapabilities(this.session, capabilities);
+                            DebuggerTracker.sendCapabilities(this.session, capabilities);
                         }
+                        return;
                     }
                 }
+
+                const arg: IDebuggerTrackerEvent = {
+                    clientId: '',
+                    event: OtherDebugEvents.ProtocolEvent,
+                    sessionId: this.session.id,
+                    protocolEvent: ev
+                };
+                DebuggerTracker.notifyEventClients(this.session.type, arg);
                 break;
             }
             case 'response': {
                 const rsp: DebugProtocol.Response = message as DebugProtocol.Response;
                 if (rsp) {
+                    if (!rsp.success && (['initialize', 'launch', 'attach'].find((v) => v === rsp.command))) {
+                        // If one of these fail, then there the session may not have actually started and we don't get
+                        // the global sessionStarted and sessionTerminated events at all
+                        this.terminate();
+                    }
                     const continueCommands = ['continue', 'reverseContinue', 'step', 'stepIn', 'stepOut', 'stepBack', 'next', 'goto'];
                     // We don't actually do anything when the session is paused. We wait until someone (VSCode) makes
                     // a stack trace request and we get the frameId from there. Any one will do. Either this or we
@@ -120,17 +104,17 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
                         if (
                             rsp.body?.stackFrames &&
                             rsp.body.stackFrames.length > 0 &&
-                            this.lastFrameId === undefined
+                            this.fistStackTrace === undefined
                         ) {
-                            this.lastFrameId = rsp.body.stackFrames[0].id;
-                            DebuggerTracker.setStatus(this.session, 'stopped', this.lastFrameId);
+                            this.fistStackTrace = rsp as DebugProtocol.StackTraceResponse;
+                            DebuggerTracker.sendFirstStackTrace(this.session, this.fistStackTrace);
                         }
                     } else if (rsp.success && continueCommands.includes(rsp.command)) {
-                        DebuggerTracker.setStatus(this.session, 'running');
+                        DebuggerTracker.setStatus(this.session, DebugSessionStatus.Running);
                     } else if (rsp.command === 'initialize') {
                         const capabilities = rsp.body as DebugProtocol.Capabilities;
                         if (capabilities) {
-                            DebuggerTracker.setCapabilities(this.session, capabilities);
+                            DebuggerTracker.sendCapabilities(this.session, capabilities);
                         }
                     }
                 }
@@ -144,45 +128,113 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
     }
 
     public onWillReceiveMessage(msg: any) {
-        appendMsgToTmpDir('r ' + JSON.stringify(msg));
+        if (this.isTerminated) return;
+        appendMsgToTmpDir('r ', msg);
     }
 
     public static trackAllSessions(): vscode.Disposable[] {
         const ret = [
             vscode.debug.onDidStartDebugSession((s: vscode.DebugSession) => {
-                if (TrackedDebuggers.includes(s.type)) {
-                    DebuggerTracker.setStatus(s, 'running');        // We pretend like it is running when it just started
-                }
+                // A session is truly not running until we get the first this event.
+                // May never happen
+                DebuggerTracker.setStatus(s, DebugSessionStatus.Started);
             }),
             vscode.debug.onDidTerminateDebugSession((s: vscode.DebugSession) => {
-                if (TrackedDebuggers.includes(s.type)) {
-                    DebuggerTracker.setStatus(s, 'terminated');
-                    delete DebuggerTracker.allSessionsById[s.id];
+                const tracker = AllSessionsById[s.id];
+                if (tracker) {
+                    tracker.terminate();
                 }
             })
         ];
         return ret;
     }
 
-    private static setStatus(s: vscode.DebugSession, status: DebugSessionStatus, frameId?: number) {
-        console.log(`Debug Tracker: Session '${s.name}': Status ${status}, id = ${s.id}`);
-        const props = DebuggerTracker.allSessionsById[s.id];
-        if (props && (props.status !== status)) {
-            props.status = status;
-            const arg = DebuggerTracker.toSerilazable(props);
-            if (typeof frameId === 'number') {
-                arg.frameId = frameId;
-            }
-            DebuggerTracker.eventEmitter.emit(status, arg);
-            DebuggerTracker.eventEmitter.emit('any', arg);
+    private terminate() {
+        if (!this.isTerminated) {
+            this.isTerminated = true;
+            DebuggerTracker.setStatus(this.session, DebugSessionStatus.Terminated);
+            delete AllSessionsById[this.session.id];
         }
     }
 
-    private static setCapabilities(s: vscode.DebugSession, capabilities: DebugProtocol.Capabilities) {
-        const props = DebuggerTracker.allSessionsById[s.id];
-        props.canReadMemory = !!capabilities?.supportsReadMemoryRequest;
-        props.canWriteMemory = !!capabilities?.supportsWriteMemoryRequest;
-        DebuggerTracker.eventEmitter.emit('capabilities', props);
+    private static notifyClientsGeneric(arg: IDebuggerTrackerEvent, clients: ClientInfo[]) {
+        for (const client of clients) {
+            try {
+                const tmp: IDebuggerTrackerEvent = { ...arg, clientId: client.clientId };
+                client.handler(tmp).catch((e) => {
+                    console.error(`debug-tracer: Client handler threw an exception, ${e}`);
+                });
+            }
+            catch (e) {
+                console.error(`debug-tracer: Could not run client handler, ${e}`);
+            }
+        }
+    }
+
+    private static notifyClients(daName: string, arg: IDebuggerTrackerEvent) {
+        const wildOnes = DebugClients['*'] || [];
+        const thisOne = DebugClients[daName] || [];
+        const all = wildOnes.concat(thisOne);
+        DebuggerTracker.notifyClientsGeneric(arg, all);
+    }
+
+    private static notifyEventClients(daName: string, arg: IDebuggerTrackerEvent) {
+        const wildOnes = DebugEventClients['*'] || [];
+        const thisOne = DebugEventClients[daName] || [];
+        const all = wildOnes.concat(thisOne);
+        DebuggerTracker.notifyClientsGeneric(arg, all);
+    }
+
+    private static setStatus(
+        s: vscode.DebugSession,
+        status: DebugSessionStatus,
+        optArg?: DebugProtocol.StoppedEvent) {
+        console.log(`Debug Tracker: Session '${s.type}': Status ${status}, id = ${s.id}`);
+        const tracker = AllSessionsById[s.id];
+        if (tracker && (tracker.status !== status)) {
+            tracker.status = status;
+            const arg: IDebuggerTrackerEvent = {
+                clientId: '',
+                event: status,
+                sessionId: s.id
+            };
+            if (status === DebugSessionStatus.Initializing) {
+                arg.session = s;
+            } else if (status === DebugSessionStatus.Stopped) {
+                arg.stoppedEvent = optArg as DebugProtocol.StoppedEvent;
+            }
+            this.notifyClients(s.type, arg);
+        }
+    }
+
+    private static sendCapabilities(s: vscode.DebugSession, capabilities: DebugProtocol.Capabilities) {
+        const arg: IDebuggerTrackerEvent = {
+            clientId: '',
+            event: OtherDebugEvents.Capabilities,
+            sessionId: s.id,
+            capabilities: capabilities
+        };
+        this.notifyClients(s.type, arg);
+    }
+
+    private static sendFirstStackTrace(s: vscode.DebugSession, response: DebugProtocol.StackTraceResponse) {
+        const arg: IDebuggerTrackerEvent = {
+            clientId: '',
+            event: OtherDebugEvents.FirstStackTrace,
+            sessionId: s.id,
+            stackTrace: response
+        };
+        this.notifyClients(s.type, arg);
+    }
+
+    public notifyCurrentStatus(clientId: string) {
+        const arg: IDebuggerTrackerEvent = {
+            clientId: clientId,
+            event: this.status,
+            sessionId: this.session.id,
+            session: this.session
+        };
+        DebuggerTracker.notifyClients(this.session.type, arg);        
     }
 }
 
@@ -195,51 +247,118 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
     constructor() {
         DebugTrackerFactory.context.subscriptions.push(
             ...DebuggerTracker.trackAllSessions(),
-            vscode.workspace.onDidChangeConfiguration(this.settingsChanged.bind(this))
+            vscode.workspace.onDidChangeConfiguration(this.settingsChanged.bind(this)),
+            vscode.debug.registerDebugAdapterTrackerFactory('*', this)
         );
-        TrackedDebuggers.map((debuggerType) => {
-            DebugTrackerFactory.context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory(debuggerType, this));
-        });
-        this.updateTrackedDebuggersFromSettings();
     }
 
     private settingsChanged(e: vscode.ConfigurationChangeEvent) {
-        if (e.affectsConfiguration('memview.trackDebuggers')) {
-            this.updateTrackedDebuggersFromSettings();
-        }
-    }
-
-    private updateTrackedDebuggersFromSettings() {
-        const config = vscode.workspace.getConfiguration('memview', null);
-        const prop = config.get('trackDebuggers', []);
-        if (prop && Array.isArray(prop)) {
-            for (let ix = 0; ix < prop.length; ix++) {
-                if (!TrackedDebuggers.includes(prop[ix])) {
-                    DebugTrackerFactory.context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory(prop[ix], this));
-                }
-            }
-        }
+        console.log(e);
     }
 
     public createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
         return new DebuggerTracker(session);
     }
+
+    public subscribe(arg: IDebuggerTrackerSubscribeArg): IDebuggerSubscription | string {
+        const uuid = uuidv4();
+        const item = new ClientInfo(uuid, arg.body.handler);
+        const add = (daName: string) => {
+            let existing = DebugClients[daName];
+            if (existing) {
+                existing.push(item);
+            } else {
+                DebugClients[daName] = [item];
+            }
+            if (arg.body.wantCurrentStatus) {
+                nextTick(() => {
+                    for (const [_id, tracker] of Object.entries(AllSessionsById)) {
+                        tracker.notifyCurrentStatus(uuid);
+                        if ((daName === '*') || (daName === tracker.session.type)) {
+                            tracker.notifyCurrentStatus(uuid);
+                        }
+                    }
+                });
+            }
+            if (arg.body.notifyAllEvents) {
+                existing = DebugEventClients[daName];
+                if (existing) {
+                    existing.push(item);
+                } else {
+                    DebugEventClients[daName] = [item];
+                }
+            }
+        };
+
+        if (!arg.body) {
+            return 'Body field missing for debug-tracker subscribe()';
+        } else if (!arg.body.debuggers) {
+            return 'No debuggers specified in debug-tracker subscribe()';
+        } else if (!arg.body.handler) {
+            return 'No handler specified in debug-tracker subscribe()';
+        } else if (typeof arg.body.handler !== 'function') {
+            return 'Invalid handler, must be a function in debug-tracker subscribe()';
+        } else if (arg.body.debuggers === '*') {
+            add('*');
+        } else {
+            for (const daName of arg.body.debuggers) {
+                add(daName);
+            }
+        }
+        const tmp: IDebuggerSubscription = {
+            clientId: uuid
+        };
+        return tmp;
+    }
+
+    public unsubscribe(clientId: string) {
+        for (const item of [DebugClients, DebugEventClients]) {
+            for (const daName of Object.getOwnPropertyNames(item)) {
+                const clientInfo = item[daName];
+                item[daName] = clientInfo.filter((v) => v.clientId !== clientId);
+                if (item[daName].length === 0) {
+                    delete item[daName];
+                }
+            }
+        }
+    }
+
+    public getSessionStatus(sessionId: string): DebugSessionStatus {
+        const session = DebuggerTracker.getSessionById(sessionId);
+        if (!session) {
+            return DebugSessionStatus.Unknown;
+        }
+        return session.status;
+    }
+
+    public getSessionInfo(sessionId: string): ITrackedDebugSession | undefined {
+        const session = DebuggerTracker.getSessionById(sessionId);
+        if (!session) {
+            return undefined;
+        }
+        const ret: ITrackedDebugSession = {
+            session: session.session,
+            status: session.status
+        };
+        return ret;
+    }
 }
 
-function appendMsgToTmpDir(str: string) {
-    try {
-        // eslint-disable-next-line no-constant-condition
-        if (false) {
-            const fname = path.join(os.tmpdir(), 'memview-dbg-trace.txt');
+function appendMsgToTmpDir(str: string, obj: any) {
+    // eslint-disable-next-line no-constant-condition
+    if (true) {
+        str += JSON.stringify(obj);
+        try {
+            const fname = path.join(os.tmpdir(), 'debug-tracker-log.txt');
             // console.log(`Write ${str} to file ${fname}`);
             if (!str.endsWith('\n')) {
                 str = str + '\n';
             }
             fs.appendFileSync(fname, str);
         }
-    }
-    catch (e: any) {
-        console.log(e ? e.toString() : 'unknown exception?');
+        catch (e: any) {
+            console.log(e ? e.toString() : 'unknown exception?');
+        }
     }
 }
 
