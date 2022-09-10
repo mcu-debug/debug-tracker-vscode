@@ -189,7 +189,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
         s: vscode.DebugSession,
         status: DebugSessionStatus,
         optArg?: DebugProtocol.StoppedEvent) {
-        console.log(`Debug Tracker: Session '${s.type}': Status ${status}, id = ${s.id}`);
+        console.log(`Debug Tracker: Session '${s.type}:${s.name}': Status '${status}', id = ${s.id}`);
         const tracker = AllSessionsById[s.id];
         if (tracker && (tracker.status !== status)) {
             tracker.status = status;
