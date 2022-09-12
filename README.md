@@ -27,11 +27,11 @@ There are two ways you can use this API and both have the exact same interface. 
    ```
    Advantage of this method is that you are sharing the tracking overhead with other extensions, improving the response time to the user. You are always up to date when this extension updates. Bad thing is if we release the extension with a bug, it will affect your users. We internally will be using this method for 3-4 extensions.
 
-2. Use it in a library form and build it into your library
+2. Use it in a library form and build it into your extension
    ```bash
    npm install debug-tracker-vscode
    ```
-   The advantage is that you are independent of another extension and you get your updates by updating your node_modules and re-releasing your extension.
+   The advantage is that you are independent of another extension you control if and when you want to move to a newer version via package.json. Disadvantage is that it does not help in reducing the number of trackers running concurrently.
 
 ## Build and Debug
 
