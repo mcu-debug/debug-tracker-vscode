@@ -117,6 +117,21 @@ export interface IDebuggerTrackerSubscribeArgBodyV1 {
      * all the others
      */
     notifyAllEvents?: boolean;
+    /**
+     * Enable debug output. You will see some output to the Debug Console but a lot more verbose output to
+     * `path.join(os.tmpdir(), 'debug-tracker-log.txt')`. Unfortunately, once debugLevel is enabled, it cannot
+     * be disabled and it applies to all clients.
+     *
+     * 0 - No output
+     *
+     * 1 - Status changes and important events (not every event produced by the debug adapter)
+     *
+     * 2 - Same as above but also write to the 'debug-tracker-log.txt'. Includes all transactions
+     *
+     * As a good community member, please turn off debugLevel for production as this causes chatter for other
+     * extensions as they are being debugged. Debug Console is shared by all extensions in the session
+     */
+    debugLevel?: 0 | 1 | 2;
 }
 /** Used while subscribing to this extension */
 export interface IDebuggerTrackerSubscribeArg {
@@ -152,25 +167,8 @@ export declare class DebugTracker implements IDebugTracker {
     private context;
     private tracker;
     constructor(context: vscode.ExtensionContext);
-    /**
-     * Should be the first call, to register to track debugers.
-     * @param arg See {@link IDebuggerTrackerSubscribeArg }
-     * @returns A string is it is an error (like malformed arg) or an {@link IDebuggerSubscription} if success
-     */
     subscribe(arg: IDebuggerTrackerSubscribeArg): IDebuggerSubscription | string;
-    /**
-     *
-     * @param clientId An id that was returned in {@link IDebuggerSubscription}, when {@link subscribe} was called
-     */
     unsubscribe(clientId: string): void;
-    /**
-     * @param sessionId This is the ID of the debug session that is part of vscode.DebugSession
-     * @returns Returns the current status of a session. This can be DebugSessionStatus.Unknown if the session does not exist anymore
-     */
     getSessionStatus(sessionId: string): DebugSessionStatus;
-    /**
-     * @param sessionId This is the ID of the debug session that is part of vscode.DebugSession
-     * @returns Returns the session information. This can be `undefined` if the session does not exist anymore
-     */
     getSessionInfo(sessionId: string): ITrackedDebugSession | undefined;
 }

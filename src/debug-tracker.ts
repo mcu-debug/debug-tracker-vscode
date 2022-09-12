@@ -30,6 +30,7 @@ class ClientInfo {
 const DebugClients: { [debugAdapter: string]: ClientInfo[] } = {};
 const DebugEventClients: { [debugAdapter: string]: ClientInfo[] } = {};
 const AllSessionsById: { [sessionId: string]: DebuggerTracker } = {};
+let DebugLevel = 0;
 
 export class DebuggerTracker implements vscode.DebugAdapterTracker {
     private fistStackTrace: DebugProtocol.StackTraceResponse | undefined;
@@ -47,7 +48,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
 
     public onDidSendMessage(msg: any): void {
         if (this.isTerminated) return;
-        appendMsgToTmpDir('s ', msg);
+        appendMsgToTmpDir('--> ', msg);
         const message = msg as DebugProtocol.ProtocolMessage;
         if (!message) {
             return;
@@ -125,7 +126,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
 
     public onWillReceiveMessage(msg: any) {
         if (this.isTerminated) return;
-        appendMsgToTmpDir('r ', msg);
+        appendMsgToTmpDir('<-- ', msg);
     }
 
     public static trackAllSessions(): vscode.Disposable[] {
@@ -155,14 +156,14 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
 
     private static notifyClientsGeneric(arg: IDebuggerTrackerEvent, clients: ClientInfo[]) {
         for (const client of clients) {
+            const tmp: IDebuggerTrackerEvent = { ...arg, clientId: client.clientId };
             try {
-                const tmp: IDebuggerTrackerEvent = { ...arg, clientId: client.clientId };
                 client.handler(tmp).catch((e) => {
-                    console.error(`debug-tracer: Client handler threw an exception, ${e}`);
+                    console.error(`debug-tracer: Client handler threw an exception, ${e}`, tmp);
                 });
             }
             catch (e) {
-                console.error(`debug-tracer: Could not run client handler, ${e}`);
+                console.error(`debug-tracer: Could not run client handler, ${e}`, tmp);
             }
         }
     }
@@ -185,7 +186,11 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
         s: vscode.DebugSession,
         status: DebugSessionStatus,
         optArg?: DebugProtocol.StoppedEvent) {
-        console.log(`Debug Tracker: Session '${s.type}:${s.name}': Status '${status}', id = ${s.id}`);
+        if (DebugLevel) {
+            const str = `Debug Tracker: Session '${s.type}:${s.name}': Status '${status}', id = ${s.id}`;
+            console.log(str);
+            appendMsgToTmpDir(str, undefined);
+        }
         const tracker = AllSessionsById[s.id];
         if (tracker && (tracker.status !== status)) {
             tracker.status = status;
@@ -204,6 +209,11 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
     }
 
     private static sendCapabilities(s: vscode.DebugSession, capabilities: DebugProtocol.Capabilities) {
+        if (DebugLevel) {
+            const str = `Debug Tracker: Session '${s.type}:${s.name}': event '${OtherDebugEvents.Capabilities}', id = ${s.id}`;
+            console.log(str);
+            appendMsgToTmpDir(str, undefined);
+        }
         const arg: IDebuggerTrackerEvent = {
             clientId: '',
             event: OtherDebugEvents.Capabilities,
@@ -214,6 +224,11 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
     }
 
     private static sendFirstStackTrace(s: vscode.DebugSession, response: DebugProtocol.StackTraceResponse) {
+        if (DebugLevel) {
+            const str = `Debug Tracker: Session '${s.type}:${s.name}': event '${OtherDebugEvents.FirstStackTrace}', id = ${s.id}`;
+            console.log(str);
+            appendMsgToTmpDir(str, undefined);
+        }
         const arg: IDebuggerTrackerEvent = {
             clientId: '',
             event: OtherDebugEvents.FirstStackTrace,
@@ -230,7 +245,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
             sessionId: this.session.id,
             session: this.session
         };
-        DebuggerTracker.notifyClients(this.session.type, arg);        
+        DebuggerTracker.notifyClients(this.session.type, arg);
     }
 }
 
@@ -301,6 +316,10 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
                 add(daName);
             }
         }
+
+        if ((arg.body.debugLevel !== undefined) && (arg.body.debugLevel > DebugLevel)) {
+            DebugLevel = arg.body.debugLevel;
+        }
         const tmp: IDebuggerSubscription = {
             clientId: uuid
         };
@@ -343,17 +362,18 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+let firstDebugOutput = true;
 function appendMsgToTmpDir(str: string, obj: any) {
-    // eslint-disable-next-line no-constant-condition
-    if (true) {
-        str += JSON.stringify(obj);
+    if (DebugLevel > 1) {
+        str += (obj ? JSON.stringify(obj) : '') + '\n';
         try {
             const fname = path.join(os.tmpdir(), 'debug-tracker-log.txt');
-            // console.log(`Write ${str} to file ${fname}`);
-            if (!str.endsWith('\n')) {
-                str = str + '\n';
+            if (firstDebugOutput) {
+                fs.writeFileSync(fname, str);
+                firstDebugOutput = false;
+            } else {
+                fs.appendFileSync(fname, str);
             }
-            fs.appendFileSync(fname, str);
         }
         catch (e: any) {
             console.log(e ? e.toString() : 'unknown exception?');
