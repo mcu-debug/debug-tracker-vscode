@@ -10,7 +10,7 @@ VSCode does not provide a full complement of events. It only has an event for st
 
 An extension can subscribe to all debug sessions of just the debug adapters that they are interested in. The selection of debug adapter is done via the `type` property used in a launch.json. For instance for `vscode-cpptools`, that would be `cppdbg`.
 
-From a performance point of view, this extension generate 3,000,000 events per second.
+From a performance point of view, this extension can generate 3,000,000 events per second on a 2021 Macbook Pro.
 
 If we missed an event or if there is an error in our logic when synthesizing events, please let us know by filing and Issue or creating a PR.
 
