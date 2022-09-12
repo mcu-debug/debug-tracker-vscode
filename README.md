@@ -18,7 +18,7 @@ We have versioned this API and aim to keep compatibility for the long term. If w
 
 ## Usage
 
-There are two ways you can use this API and both have the exact same interface.
+There are two ways you can use this API and both have the exact same interface. You can see the [sample API here](https://github.com/mcu-debug/debug-tracker-vscode/blob/master/dist/index.d.ts) (do not use this, please get it from npm install).
 
 1. Use this extension as a dependency and call the extension api directly from your extension
    See an example extension @ https://github.com/mcu-debug/debug-tracker-client
