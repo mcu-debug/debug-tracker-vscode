@@ -90,6 +90,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
                         // If one of these fail, then there the session may not have actually started and we don't get
                         // the global sessionStarted and sessionTerminated events at all
                         this.terminate();
+                        break;
                     }
                     const continueCommands = ['continue', 'reverseContinue', 'step', 'stepIn', 'stepOut', 'stepBack', 'next', 'goto'];
                     // We don't actually do anything when the session is paused. We wait until someone (VSCode) makes
@@ -282,14 +283,16 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
                 DebugClients[daName] = [item];
             }
             if (arg.body.wantCurrentStatus) {
-                setTimeout(() => {
+                // We don't want to notify before subscribe returns. Generate events if any
+                // asynchronously
+                setImmediate(() => {
                     for (const [_id, tracker] of Object.entries(AllSessionsById)) {
                         tracker.notifyCurrentStatus(uuid);
                         if ((daName === '*') || (daName === tracker.session.type)) {
                             tracker.notifyCurrentStatus(uuid);
                         }
                     }
-                }, 0);
+                });
             }
             if (arg.body.notifyAllEvents) {
                 existing = DebugEventClients[daName];
