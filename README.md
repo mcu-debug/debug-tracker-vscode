@@ -22,16 +22,18 @@ There are two ways you can use this API and both have the exact same interface. 
 
 1. Use this extension as a dependency and call the extension api directly from your extension
    See an example extension @ https://github.com/mcu-debug/debug-tracker-client
-   ```bash
-   npm install debug-tracker-vscode --save-dev 
-   ```
-   Advantage of this method is that you are sharing the tracking overhead with other extensions, improving the response time to the user. You are always up to date when this extension updates. Bad thing is if we release the extension with a bug, it will affect your users. We internally will be using this method for 3-4 extensions.
+
+    ```bash
+    npm install debug-tracker-vscode --save-dev
+    ```
+
+    Advantage of this method is that you are sharing the tracking overhead with other extensions, improving the response time to the user. You are always up to date when this extension updates. Bad thing is if we release the extension with a bug, it will affect your users. We internally will be using this method for 3-4 extensions.
 
 2. Use it in a library form and build it into your extension
-   ```bash
-   npm install debug-tracker-vscode
-   ```
-   The advantage is that you are independent of another extension you control if and when you want to move to a newer version via package.json. Disadvantage is that it does not help in reducing the number of trackers running concurrently.
+    ```bash
+    npm install debug-tracker-vscode
+    ```
+    The advantage is that you are independent of another extension you control if and when you want to move to a newer version via package.json. Disadvantage is that it does not help in reducing the number of trackers running concurrently.
 
 ## Build and Debug
 
@@ -39,15 +41,15 @@ Pre-requisites are that you have NodeJS (`npm`) and `vsce` already installed and
 
 1. Clone this repo and change directory into it
 2. Run the following commands
-   ```bash
-   rm -f *.vsix
-   npm install
-   npm run compile
-   vsce package
-   ```
-4. The above should generate a `vsix` files and a `tgz` file. The `tgz` file can be used to add the typings you any other extension. You will need this method until we have published everything. We are not there yet. You will need the `tgz` file if you are running the sample/demo from https://github.com/mcu-debug/debug-tracker-client
-5. If you have `code` available on your command line, run the following
-   ```
-   code --install-extension *.vsix 
-   ```
-Of course you can debug this extension by launching a debug session and then running the command `Activate Debug Tracker` from the `Command Palette` in the in the "Extension Development Host". Once it is activated, start any debug session and observe the Debug Console of the original window.
+    ```bash
+    rm -f *.vsix
+    npm install
+    npm run compile
+    vsce package
+    ```
+3. The above should generate a `vsix` files and a `tgz` file. The `tgz` file can be used to add the typings you any other extension. You will need this method until we have published everything. We are not there yet. You will need the `tgz` file if you are running the sample/demo from https://github.com/mcu-debug/debug-tracker-client
+4. If you have `code` available on your command line, run the following
+    ```
+    code --install-extension *.vsix
+    ```
+    Of course you can debug this extension by launching a debug session and then running the command `Activate Debug Tracker` from the `Command Palette` in the in the "Extension Development Host". Once it is activated, start any debug session and observe the Debug Console of the original window.
