@@ -10,7 +10,7 @@ VSCode does not provide a full complement of events. It only has an event for st
 
 An extension can subscribe to all debug sessions of just the debug adapters that they are interested in. The selection of debug adapter is done via the `type` property used in a launch.json. For instance for `vscode-cpptools`, that would be `cppdbg`.
 
-From a performance point of view, this extension generate 3,000,000 events per second.
+From a performance point of view, this extension can generate 3,000,000 events per second on a 2021 Macbook Pro.
 
 If we missed an event or if there is an error in our logic when synthesizing events, please let us know by filing and Issue or creating a PR.
 
@@ -18,7 +18,7 @@ We have versioned this API and aim to keep compatibility for the long term. If w
 
 ## Usage
 
-There are two ways you can use this API and both have the exact same interface.
+There are two ways you can use this API and both have the exact same interface. You can see the [sample API here](https://github.com/mcu-debug/debug-tracker-vscode/blob/master/dist/index.d.ts) (do not use this, please get it from npm install).
 
 1. Use this extension as a dependency and call the extension api directly from your extension
    See an example extension @ https://github.com/mcu-debug/debug-tracker-client
@@ -27,11 +27,11 @@ There are two ways you can use this API and both have the exact same interface.
    ```
    Advantage of this method is that you are sharing the tracking overhead with other extensions, improving the response time to the user. You are always up to date when this extension updates. Bad thing is if we release the extension with a bug, it will affect your users. We internally will be using this method for 3-4 extensions.
 
-2. Use it in a library form and build it into your library
+2. Use it in a library form and build it into your extension
    ```bash
    npm install debug-tracker-vscode
    ```
-   The advantage is that you are independent of another extension and you get your updates by updating your node_modules and re-releasing your extension.
+   The advantage is that you are independent of another extension you control if and when you want to move to a newer version via package.json. Disadvantage is that it does not help in reducing the number of trackers running concurrently.
 
 ## Build and Debug
 
