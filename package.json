@@ -1,8 +1,8 @@
 {
     "name": "debug-tracker-vscode",
     "displayName": "debug-tracker-vscode",
-    "description": "A generic debug tracker that provides API/Event services for other extensions. It exposes the APU as an extension or you can embed the library in your extension",
-    "version": "0.0.3",
+    "description": "A generic debug tracker that provides API/Event services for other extensions. It exposes the API as an extension or you can embed the library in your extension",
+    "version": "0.0.4",
     "repository": {
         "type": "git",
         "url": "https://github.com/mcu-debug/debug-tracker-vscode.git"
@@ -25,7 +25,7 @@
     "activationEvents": [
         "onCommand:debug-tracker-vscode.activate"
     ],
-    "main": "./dist/extension.js",
+    "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "contributes": {
         "commands": [
@@ -37,7 +37,6 @@
     },
     "scripts": {
         "vscode:prepublish": "npm run package",
-        "compilex": "webpack && cp out/dist/index.d.ts dist/index.d.ts",
         "compile": "webpack && npm run build:types",
         "build:types": "tsc -d --declarationDir dist --emitDeclarationOnly src/exports.ts && mv dist/exports.d.ts dist/index.d.ts",
         "watch": "webpack --watch",
