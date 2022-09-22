@@ -71,4 +71,4 @@ const libConfig = {
     library: 'DebugTracker'
   }
 }
-module.exports = [ extensionConfig, libConfig ];
+module.exports = [ extensionConfig ];
