@@ -16,29 +16,13 @@
     "engines": {
         "vscode": "^1.70.0"
     },
-    "categories": [
-        "Other"
-    ],
-    "extensionKind": [
-        "ui"
-    ],
-    "activationEvents": [
-        "onCommand:debug-tracker-vscode.activate"
-    ],
-    "main": "./dist/extension.js",
-    "contributes": {
-        "commands": [
-            {
-                "command": "debug-tracker-vscode.activate",
-                "title": "Activate Debug Tracker"
-            }
-        ]
-    },
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
     "scripts": {
-        "vscode:prepublish": "npm run package",
-        "compile": "webpack",
+        "compile": "webpack && npm run build:types",
+        "build:types": "tsc -d --declarationDir dist --emitDeclarationOnly src/exports.ts && mv dist/exports.d.ts dist/index.d.ts",
         "watch": "webpack --watch",
-        "package": "webpack --mode production --devtool hidden-source-map",
+        "package": "webpack --mode production --devtool hidden-source-map && npm run build:types",
         "compile-tests": "tsc -p . --outDir out",
         "watch-tests": "tsc -p . -w --outDir out",
         "pretest": "npm run compile-tests && npm run compile && npm run lint",
@@ -49,7 +33,6 @@
         "@types/glob": "^7.2.0",
         "@types/mocha": "^9.1.1",
         "@types/node": "16.x",
-        "@types/uuid": "^8.3.4",
         "@types/vscode": "^1.70.0",
         "@typescript-eslint/eslint-plugin": "^5.31.0",
         "@typescript-eslint/parser": "^5.31.0",
@@ -64,6 +47,6 @@
     },
     "dependencies": {
         "@vscode/debugprotocol": "^1.57.0",
-        "uuid": "^9.0.0"
+        "pure-uuid": "^1.6.2"
     }
 }

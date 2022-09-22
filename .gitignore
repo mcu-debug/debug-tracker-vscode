@@ -107,5 +107,5 @@ typings/
 .tern-port
 
 dist/*
-# We want to keep this for now
-!dist/index.d.ts
+lib/dist/**
+lib/src/**

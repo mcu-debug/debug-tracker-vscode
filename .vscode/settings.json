@@ -29,4 +29,10 @@
     "editor.wordWrapColumn": 120,
     "cortex-debug.showRTOS": false,
     "javascript.validate.enable": false,
+    "[shellscript]": {
+        "editor.defaultFormatter": "foxundermoon.shell-format"
+    },
+    "[ignore]": {
+        "editor.defaultFormatter": "foxundermoon.shell-format"
+    },
 }
