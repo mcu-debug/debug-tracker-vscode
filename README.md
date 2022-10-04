@@ -20,20 +20,15 @@ We have versioned this API and aim to keep compatibility for the long term. If w
 
 There are two ways you can use this API and both have the exact same interface. You can see the [sample API here](https://github.com/mcu-debug/debug-tracker-vscode/blob/master/src/exports.ts) (do not use this, please get it from npm install where it will show up as exports.d.ts).
 
-1. Use this extension as a dependency and call the extension api directly from your extension
-   See an example extension @ https://github.com/mcu-debug/debug-tracker-client
+1. Install the debug-tracer-vscode npm library
 
-    ```bash
-    npm install debug-tracker-vscode --save-dev
-    ```
-
-    Advantage of this method is that you are sharing the tracking overhead with other extensions, improving the response time to the user. You are always up to date when this extension updates. Bad thing is if we release the extension with a bug, it will affect your users. We internally will be using this method for 3-4 extensions.
-
-2. Use it in a library form and build it into your extension
     ```bash
     npm install debug-tracker-vscode
     ```
-    The advantage is that you are independent of another extension you control if and when you want to move to a newer version via package.json. Disadvantage is that it does not help in reducing the number of trackers running concurrently.
+
+2. Import the library API from the extension `debug-tracer-vscode` and use the npm library of the same name for type definitions. You can activate the extension from your extension and acquire a shared API. Advantage of this method is that you are sharing the tracking overhead with other extensions, improving the response time to the user. You are always up to date when this extension updates. Bad thing is if we release the extension with a bug, it will affect your users. We internally will be using this method for 3-4 extensions.
+
+3. Use this extension by create a new DebugTracker Object. You have now instantiated the tracker in your own extension and is not shared with others. The advantage is that you are independent of another extension you control if and when you want to move to a newer version via package.json. Disadvantage is that it does not help in reducing the number of trackers running concurrently.
 
 ## Build and Debug
 
