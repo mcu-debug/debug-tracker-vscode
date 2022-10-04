@@ -28,7 +28,7 @@ There are two ways you can use this API and both have the exact same interface. 
 
 2. Import the library API from the extension `debug-tracer-vscode` and use the npm library of the same name for type definitions. You can activate the extension from your extension and acquire a shared API. Advantage of this method is that you are sharing the tracking overhead with other extensions, improving the response time to the user. You are always up to date when this extension updates. Bad thing is if we release the extension with a bug, it will affect your users. We internally will be using this method for 3-4 extensions.
 
-3. Use this extension by create a new DebugTracker Object. You have now instantiated the tracker in your own extension and is not shared with others. The advantage is that you are independent of another extension you control if and when you want to move to a newer version via package.json. Disadvantage is that it does not help in reducing the number of trackers running concurrently.
+3. Use this extension by creating a `new DebugTracker()` Object. You have now instantiated the tracker in your own extension and is not shared with others. The advantage is that you are independent of another extension you control if and when you want to move to a newer version via package.json. Disadvantage is that it does not help in reducing the number of trackers running concurrently.
 
 ## Build and Debug
 
@@ -48,3 +48,12 @@ Pre-requisites are that you have NodeJS (`npm`) and `vsce` already installed and
     code --install-extension *.vsix
     ```
     Of course you can debug this extension by launching a debug session and then running the command `Activate Debug Tracker` from the `Command Palette` in the in the "Extension Development Host". Once it is activated, start any debug session and observe the Debug Console of the original window.
+
+# Build the NPM library
+
+We had trouble creating both an extension and a library from the same directory so we use build the library in an alternate directory. Somebody help us better organize this but for now, do this
+
+```bash
+cd lib
+bash ./build.sh
+```
