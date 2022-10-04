@@ -109,3 +109,7 @@ typings/
 dist/*
 lib/dist/**
 lib/src/**
+lib/out/**
+lib/CHANGELOG.md
+lib/LICENSE
+lib/README.md

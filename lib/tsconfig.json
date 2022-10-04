@@ -9,6 +9,8 @@
         "allowJs": true,
         "checkJs": false,
         "forceConsistentCasingInFileNames": true,
+        "declaration": true,
+        "declarationMap":true,
         "importHelpers": true,
         "strict": true /* enable all strict type-checking options */
         /* Additional Checks */

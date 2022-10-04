@@ -98,7 +98,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
                     // have to make our requests for threads, scopes, stackTrace, etc. Unnecessary traffic and work
                     // for the adapter. Downside is if no stackTrace is requested by someone else, then we don't do anything
                     // but then who is the main client for the adapter?
-                    if (rsp.command === 'stackTrace') {
+                    if (rsp.success && rsp.command === 'stackTrace') {
                         if (
                             rsp.body?.stackFrames &&
                             rsp.body.stackFrames.length > 0 &&
