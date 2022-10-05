@@ -367,6 +367,9 @@ import * as os from 'os';
 import * as path from 'path';
 let firstDebugOutput = true;
 function appendMsgToTmpDir(str: string, obj: any) {
+    if (fs === undefined) {
+        return;
+    }
     if (DebugLevel > 1) {
         str += (obj ? JSON.stringify(obj) : '') + '\n';
         try {
