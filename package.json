@@ -2,7 +2,7 @@
     "name": "debug-tracker-vscode",
     "displayName": "debug-tracker-vscode",
     "description": "A generic debug tracker that provides API/Event services for other extensions. It exposes the API as an extension or you can embed the library in your extension",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "repository": {
         "type": "git",
         "url": "https://github.com/mcu-debug/debug-tracker-vscode.git"
@@ -23,13 +23,14 @@
         "ui"
     ],
     "activationEvents": [
-        "onCommand:debug-tracker-vscode.activate"
+        "onCommand:debug-tracker-vscode.start"
     ],
     "main": "./dist/extension.js",
     "contributes": {
         "commands": [
             {
-                "command": "debug-tracker-vscode.activate",
+                "category": "Debug Tracker",
+                "command": "debug-tracker-vscode.start",
                 "title": "Activate Debug Tracker"
             }
         ]

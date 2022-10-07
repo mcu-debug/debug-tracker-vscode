@@ -27,6 +27,7 @@ class ClientInfo {
     constructor(public clientId: string, public handler: DebugEventHandler) { }
 }
 
+let ExtensionName = 'unknown extension name';
 const DebugClients: { [debugAdapter: string]: ClientInfo[] } = {};
 const DebugEventClients: { [debugAdapter: string]: ClientInfo[] } = {};
 const AllSessionsById: { [sessionId: string]: DebuggerTracker } = {};
@@ -188,7 +189,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
         status: DebugSessionStatus,
         optArg?: DebugProtocol.StoppedEvent) {
         if (DebugLevel) {
-            const str = `Debug Tracker: Session '${s.type}:${s.name}': Status '${status}', id = ${s.id}`;
+            const str = `${ExtensionName}: Session '${s.type}:${s.name}': Status '${status}', id = ${s.id}`;
             console.log(str);
             appendMsgToTmpDir(str, undefined);
         }
@@ -211,7 +212,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
 
     private static sendCapabilities(s: vscode.DebugSession, capabilities: DebugProtocol.Capabilities) {
         if (DebugLevel) {
-            const str = `Debug Tracker: Session '${s.type}:${s.name}': event '${OtherDebugEvents.Capabilities}', id = ${s.id}`;
+            const str = `${ExtensionName}: Session '${s.type}:${s.name}': event '${OtherDebugEvents.Capabilities}', id = ${s.id}`;
             console.log(str);
             appendMsgToTmpDir(str, undefined);
         }
@@ -226,7 +227,7 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
 
     private static sendFirstStackTrace(s: vscode.DebugSession, response: DebugProtocol.StackTraceResponse) {
         if (DebugLevel) {
-            const str = `Debug Tracker: Session '${s.type}:${s.name}': event '${OtherDebugEvents.FirstStackTrace}', id = ${s.id}`;
+            const str = `${ExtensionName}: Session '${s.type}:${s.name}': event '${OtherDebugEvents.FirstStackTrace}', id = ${s.id}`;
             console.log(str);
             appendMsgToTmpDir(str, undefined);
         }
@@ -254,6 +255,8 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
     static context: vscode.ExtensionContext;
     public static register(cxt: vscode.ExtensionContext): DebugTrackerFactory {
         DebugTrackerFactory.context = cxt;
+        const elements = cxt.extensionUri.path.split(/[\\/]+/);
+        ExtensionName = elements.pop() || cxt.extensionUri.path;
         return new DebugTrackerFactory();
     }
     constructor() {

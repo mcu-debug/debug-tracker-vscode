@@ -23,7 +23,6 @@
     ],
     "scripts": {
         "compile": "webpack && npm run build:types",
-        "build:typesx": "tsc -d --declarationDir dist --emitDeclarationOnly src/exports.ts && mv dist/exports.d.ts dist/index.d.ts",
         "build:types": "cp out/src/exports.d.ts dist",
         "watch": "webpack --watch",
         "package": "webpack --mode production --devtool hidden-source-map && npm run build:types",
