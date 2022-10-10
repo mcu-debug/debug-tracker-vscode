@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 import { DebugProtocol } from '@vscode/debugprotocol';
 import { DebugTrackerFactory } from './debug-tracker';
 
+export const TRACKER_EXT_ID = 'mcu-debug.debug-tracker-vscode';
+
 /** Return value of a subscription. It will be used in subsequent calls to identify the caller */
 export interface IDebuggerSubscription {
     /**
@@ -218,5 +220,59 @@ export class DebugTracker implements IDebugTracker {
 
     public getSessionInfo(sessionId: string): ITrackedDebugSession | undefined {
         return this.tracker.getSessionInfo(sessionId);
+    }
+
+    public static getTrackerExtension(callerExtName: string, maxTimeout: number = 10 * 1000): Promise<IDebugTracker | Error> {
+        let trackerApi: IDebugTracker | undefined;
+        // eslint-disable-next-line no-async-promise-executor
+        return new Promise<IDebugTracker | Error>(async (resolve) => {
+            let trackerExt = vscode.extensions.getExtension<IDebugTracker>(TRACKER_EXT_ID);
+            const activate = () => {
+                if (trackerExt) {
+                    trackerExt.activate().then((api) => {
+                        trackerApi = api;
+                        resolve(api);
+                    }), (e: any) => {
+                        resolve(new Error(`Activation of extension ${TRACKER_EXT_ID} failed: ${e}`));
+                    };
+                } else {
+                    resolve(new Error('Internal Error: invalid call to activate'));
+                }
+            };
+
+            if (!trackerExt) {
+                const installStr = `Install ${TRACKER_EXT_ID}`;
+                const doInstall = await vscode.window.showErrorMessage(
+                    `${callerExtName} requires extension '${TRACKER_EXT_ID}' to be installed. Do you want to install '${TRACKER_EXT_ID}'`,
+                    installStr, 'Cancel');
+                if (doInstall === installStr) {
+                    await vscode.commands.executeCommand('workbench.extensions.installExtension', TRACKER_EXT_ID);
+                    trackerExt = vscode.extensions.getExtension<IDebugTracker>(TRACKER_EXT_ID);
+                    while (!trackerExt) {
+                        if (trackerApi) {
+                            break;
+                        }
+                        if (maxTimeout <= 0) {
+                            resolve(new Error(`Install of extension ${TRACKER_EXT_ID} timed out`));
+                            return;
+                        }
+                        const waitTime = 500;
+                        await new Promise<void>((res) => {
+                            setTimeout(() => {
+                                maxTimeout -= waitTime;
+                                res();
+                            }, waitTime);
+                        });
+                        trackerExt = vscode.extensions.getExtension<IDebugTracker>(TRACKER_EXT_ID);
+                    }
+                    activate();
+                } else {
+                    resolve(new Error(`Install of extension ${TRACKER_EXT_ID} cancelled`));
+                    return;
+                }
+            } else {
+                activate();
+            }
+        });
     }
 }
