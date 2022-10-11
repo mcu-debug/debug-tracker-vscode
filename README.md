@@ -57,3 +57,5 @@ We had trouble creating both an extension and a library from the same directory 
 cd lib
 bash ./build.sh
 ```
+
+The above generates a `.tgz` file that you can use to test the npm module.
