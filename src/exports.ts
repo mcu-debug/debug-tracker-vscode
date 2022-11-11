@@ -72,7 +72,7 @@ export enum OtherDebugEvents {
     Capabilities = 'capabilities',
 
     /**
-     * PROTOCOLEVENT means an event occurred that is specified by Debug Adapter Protocol
+     * ProtocolEvent means an event occurred that is specified by Debug Adapter Protocol
      * This is except for the RESUMED (continued), STOPPED and CAPABILITIES events which we already
      * special/specific events that can occur in various ways (not just by an DA created event)
      */
@@ -106,16 +106,16 @@ export interface IDebuggerTrackerEvent {
      */
     session?: vscode.DebugSession;
 
-    /** Only used for 'STOPPED' event */
+    /** Only used for 'Stopped' event */
     stoppedEvent?: DebugProtocol.StoppedEvent;
 
-    /** Only used for FIRST_FRAME_ID event */
+    /** Only used for FirstStackTrace event */
     stackTrace?: DebugProtocol.StackTraceResponse;
 
-    /** Only used for CAPABILITIES event */
+    /** Only used for Capabilities event */
     capabilities?: DebugProtocol.Capabilities
 
-    /** See PROTOCOLEVENT */
+    /** See ProtocolEvent */
     protocolEvent?: DebugProtocol.Event;
 }
 
