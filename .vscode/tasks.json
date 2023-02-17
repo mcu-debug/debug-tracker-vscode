@@ -15,7 +15,11 @@
 			"group": {
 				"kind": "build",
 				"isDefault": true
-			}
+			},
+            "runOptions": {
+                "runOn": "folderOpen",
+                "instanceLimit": 1
+            }
 		},
 		{
 			"type": "npm",

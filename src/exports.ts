@@ -147,14 +147,15 @@ export interface IDebuggerTrackerSubscribeArgBodyV1 {
 
     /**
      * Enable debug output. You will see some output to the Debug Console but a lot more verbose output to
-     * `path.join(os.tmpdir(), 'debug-tracker-log.txt')`. Unfortunately, once debugLevel is enabled, it cannot
-     * be disabled and it applies to all clients.
+     * an OutputChannel. Unfortunately, once debugLevel is enabled, it cannot be disabled and it applies to all clients.
+     * If you are using the shared extension, then an OutputChannel 'Mcu-debug Tracker' is created. However, if you
+     * are creating your own private instance of a DebugTracker, then you can supply the channel to be used
      *
      * 0 - No output
      * 
      * 1 - Status changes and important events (not every event produced by the debug adapter)
      * 
-     * 2 - Same as above but also write to the 'debug-tracker-log.txt'. Includes all transactions
+     * 2 - Same as above but more verbose and includes all transactions
      * 
      * As a good community member, please turn off debugLevel for production as this causes chatter for other
      * extensions as they are being debugged. Debug Console is shared by all extensions in the session
@@ -199,8 +200,8 @@ export interface IDebugTracker {
 
 export class DebugTracker implements IDebugTracker {
     private tracker: DebugTrackerFactory;
-    constructor(private context: vscode.ExtensionContext) {
-        this.tracker = DebugTrackerFactory.register(context);
+    constructor(private context: vscode.ExtensionContext, dbgChannel?: vscode.OutputChannel | vscode.LogOutputChannel) {
+        this.tracker = DebugTrackerFactory.register(context, dbgChannel);
     }
 
     public subscribe(arg: IDebuggerTrackerSubscribeArg): IDebuggerSubscription | string {

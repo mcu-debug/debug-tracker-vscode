@@ -1,6 +1,5 @@
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as vscode from 'vscode';
-import { v4 as uuidv4 } from 'uuid';
 
 import {
     DebugEventHandler,
@@ -31,7 +30,6 @@ let ExtensionName = 'unknown extension name';
 const DebugClients: { [debugAdapter: string]: ClientInfo[] } = {};
 const DebugEventClients: { [debugAdapter: string]: ClientInfo[] } = {};
 const AllSessionsById: { [sessionId: string]: DebuggerTracker } = {};
-let DebugLevel = 0;
 
 export class DebuggerTracker implements vscode.DebugAdapterTracker {
     private fistStackTrace: DebugProtocol.StackTraceResponse | undefined;
@@ -49,7 +47,9 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
 
     public onDidSendMessage(msg: any): void {
         if (this.isTerminated) return;
-        appendMsgToTmpDir('--> ', msg);
+        if (DebugTrackerFactory.dbgLevel > 1) {
+            appendMsgToDbgChannel('--> ', msg);
+        }
         const message = msg as DebugProtocol.ProtocolMessage;
         if (!message) {
             return;
@@ -127,8 +127,10 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
     }
 
     public onWillReceiveMessage(msg: any) {
+        if (DebugTrackerFactory.dbgLevel > 1) {
+            appendMsgToDbgChannel('<-- ', msg);
+        }
         if (this.isTerminated) return;
-        appendMsgToTmpDir('<-- ', msg);
     }
 
     public static trackAllSessions(): vscode.Disposable[] {
@@ -188,10 +190,9 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
         s: vscode.DebugSession,
         status: DebugSessionStatus,
         optArg?: DebugProtocol.StoppedEvent) {
-        if (DebugLevel) {
+        if (DebugTrackerFactory.dbgLevel) {
             const str = `${ExtensionName}: Session '${s.type}:${s.name}': Status '${status}', id = ${s.id}`;
-            console.log(str);
-            appendMsgToTmpDir(str, undefined);
+            appendMsgToDbgChannel(str, undefined);
         }
         const tracker = AllSessionsById[s.id];
         if (tracker && (tracker.status !== status)) {
@@ -211,10 +212,9 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
     }
 
     private static sendCapabilities(s: vscode.DebugSession, capabilities: DebugProtocol.Capabilities) {
-        if (DebugLevel) {
+        if (DebugTrackerFactory.dbgLevel) {
             const str = `${ExtensionName}: Session '${s.type}:${s.name}': event '${OtherDebugEvents.Capabilities}', id = ${s.id}`;
-            console.log(str);
-            appendMsgToTmpDir(str, undefined);
+            appendMsgToDbgChannel(str, undefined);
         }
         const arg: IDebuggerTrackerEvent = {
             clientId: '',
@@ -226,10 +226,9 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
     }
 
     private static sendFirstStackTrace(s: vscode.DebugSession, response: DebugProtocol.StackTraceResponse) {
-        if (DebugLevel) {
+        if (DebugTrackerFactory.dbgLevel) {
             const str = `${ExtensionName}: Session '${s.type}:${s.name}': event '${OtherDebugEvents.FirstStackTrace}', id = ${s.id}`;
-            console.log(str);
-            appendMsgToTmpDir(str, undefined);
+            appendMsgToDbgChannel(str, undefined);
         }
         const arg: IDebuggerTrackerEvent = {
             clientId: '',
@@ -253,7 +252,12 @@ export class DebuggerTracker implements vscode.DebugAdapterTracker {
 
 export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
     static context: vscode.ExtensionContext;
-    public static register(cxt: vscode.ExtensionContext): DebugTrackerFactory {
+    static dbgChannel?: vscode.OutputChannel | vscode.LogOutputChannel | undefined;
+    static dbgLevel: 0 | 1 | 2 = 0;
+    public static register(cxt: vscode.ExtensionContext, dbgChannel?: vscode.OutputChannel | vscode.LogOutputChannel): DebugTrackerFactory {
+        if (dbgChannel) {
+            DebugTrackerFactory.dbgChannel = dbgChannel;
+        }
         DebugTrackerFactory.context = cxt;
         const elements = cxt.extensionUri.path.split(/[\\/]+/);
         ExtensionName = elements.pop() || cxt.extensionUri.path;
@@ -275,9 +279,19 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
         return new DebuggerTracker(session);
     }
 
+
+    private static getNonce() {
+        let text = '';
+        const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        for (let i = 0; i < 32; i++) {
+            text += possible.charAt(Math.floor(Math.random() * possible.length));
+        }
+        return text;
+    }
+
     public subscribe(arg: IDebuggerTrackerSubscribeArg): IDebuggerSubscription | string {
-        const uuid = uuidv4();
-        const item = new ClientInfo(uuid, arg.body.handler);
+        const nonce = DebugTrackerFactory.getNonce();
+        const item = new ClientInfo(nonce, arg.body.handler);
         const add = (daName: string) => {
             let existing = DebugClients[daName];
             if (existing) {
@@ -290,9 +304,9 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
                 // asynchronously
                 setImmediate(() => {
                     for (const [_id, tracker] of Object.entries(AllSessionsById)) {
-                        tracker.notifyCurrentStatus(uuid);
+                        tracker.notifyCurrentStatus(nonce);
                         if ((daName === '*') || (daName === tracker.session.type)) {
-                            tracker.notifyCurrentStatus(uuid);
+                            tracker.notifyCurrentStatus(nonce);
                         }
                     }
                 });
@@ -323,11 +337,11 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
             }
         }
 
-        if ((arg.body.debugLevel !== undefined) && (arg.body.debugLevel > DebugLevel)) {
-            DebugLevel = arg.body.debugLevel;
+        if ((arg.body.debugLevel !== undefined) && (arg.body.debugLevel > DebugTrackerFactory.dbgLevel)) {
+            DebugTrackerFactory.dbgLevel = arg.body.debugLevel;
         }
         const tmp: IDebuggerSubscription = {
-            clientId: uuid
+            clientId: nonce
         };
         return tmp;
     }
@@ -365,27 +379,14 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
     }
 }
 
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-let firstDebugOutput = true;
-function appendMsgToTmpDir(str: string, obj: any) {
-    if (fs === undefined) {
-        return;
-    }
-    if (DebugLevel > 1) {
-        str += (obj ? JSON.stringify(obj) : '') + '\n';
+function appendMsgToDbgChannel(str: string, obj: any) {
+    if (DebugTrackerFactory.dbgChannel && (DebugTrackerFactory.dbgLevel > 0)) {
+        str += obj ? JSON.stringify(obj) : '';
         try {
-            const fname = path.join(os.tmpdir(), 'debug-tracker-log.txt');
-            if (firstDebugOutput) {
-                fs.writeFileSync(fname, str);
-                firstDebugOutput = false;
-            } else {
-                fs.appendFileSync(fname, str);
-            }
+            DebugTrackerFactory.dbgChannel.appendLine(str);
         }
         catch (e: any) {
-            console.log(e ? e.toString() : 'unknown exception?');
+            console.error(e ? e.toString() : 'unknown exception?');
         }
     }
 }

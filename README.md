@@ -6,11 +6,11 @@ This extension is an API extension to help other extension track debug sessions.
 
 There have been a proliferation of debug trackers (I counted four) running within various extensions. They all cause many more event handlers for each message passing between various clients and the debug adapter, and these are generally redundant. Instead, this extension creates a single point where messages are filtered looking for events like start, stop, running, etc. Other extensions can subscript to this extension that can create more precise events.
 
-VSCode does not provide a full complement of events. It only has an event for starting and terminating. There are things that occur prior to starting and one has to look into the messages, responses and events passing between VSCode and the debug adapter to synthesize other events. And looking at the many such trackers, the logic is sometimes incomplete.
+VSCode does not provide a full complement of events. It only has an event for starting and terminating. There are things that occur prior to starting and one has to look into the messages, responses and events passing between VSCode and the debug adapter to synthesize other events. And looking at the many such trackers, the logic is sometimes incomplete. A continue event is also not generated all the time so, we have to synthesize it by looking at which commands are run that could potentially cause a continue
 
 An extension can subscribe to all debug sessions of just the debug adapters that they are interested in. The selection of debug adapter is done via the `type` property used in a launch.json. For instance for `vscode-cpptools`, that would be `cppdbg`.
 
-From a performance point of view, this extension can generate 3,000,000 events per second on a 2021 Macbook Pro.
+From a performance point of view, this extension can generate 3,000,000 events per second on a 2021 Intel MacBook Pro 16".
 
 If we missed an event or if there is an error in our logic when synthesizing events, please let us know by filing and Issue or creating a PR.
 
@@ -26,9 +26,9 @@ There are two ways you can use this API and both have the exact same interface. 
     npm install debug-tracker-vscode
     ```
 
-2. Import the library API from the extension `debug-tracer-vscode` and use the npm library of the same name for type definitions. You can activate the extension from your extension and acquire a shared API. Advantage of this method is that you are sharing the tracking overhead with other extensions, improving the response time to the user. You are always up to date when this extension updates. Bad thing is if we release the extension with a bug, it will affect your users. We internally will be using this method for 3-4 extensions.
+2. Import the library API from the extension `debug-tracer-vscode` and use the npm library of the same name for type definitions. You can activate the extension from your extension and acquire a shared API. Advantage of this method is that you are sharing the tracking overhead with other extensions, improving the response time to the user. You are always up to date when this extension updates. Bad thing is if we release the extension with a bug, it will affect your users. We internally will be using this method for several extensions.
 
-3. Use this extension by creating a `new DebugTracker()` Object. You have now instantiated the tracker in your own extension and is not shared with others. The advantage is that you are independent of another extension you control if and when you want to move to a newer version via package.json. Disadvantage is that it does not help in reducing the number of trackers running concurrently.
+3. If you do not prefer to use a shared library, you can create your own private instance by doing `new DebugTracker(...)`. The advantage is that you are independent of another extension and you control if and when you want to move to a newer version via package.json. Disadvantage is that it does not help in reducing the number of trackers running concurrently.
 
 ## Build and Debug
 

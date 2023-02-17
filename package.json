@@ -2,7 +2,7 @@
     "name": "debug-tracker-vscode",
     "displayName": "debug-tracker-vscode",
     "description": "A generic debug tracker that provides API/Event services for other extensions. It exposes the API as an extension or you can embed the library in your extension",
-    "version": "0.0.13",
+    "version": "0.0.14",
     "repository": {
         "type": "git",
         "url": "https://github.com/mcu-debug/debug-tracker-vscode.git"
@@ -14,26 +14,47 @@
     ],
     "license": "MIT",
     "engines": {
-        "vscode": "^1.70.0"
+        "vscode": "^1.75.0"
     },
     "categories": [
         "Other"
     ],
     "extensionKind": [
-        "workspace"
+        "workspace",
+        "ui"
     ],
     "activationEvents": [
-        "onCommand:debug-tracker-vscode.start"
+        "onDebug"
     ],
-    "main": "./dist/extension.js",
+    "main": "./dist/desktop/extension.js",
+    "browser": "./dist/browser/extension.js",
     "contributes": {
         "commands": [
             {
                 "category": "Debug Tracker",
-                "command": "debug-tracker-vscode.start",
+                "command": "mcu-debug.debug-tracker-vscode.start",
                 "title": "Activate Debug Tracker"
+            },
+            {
+                "category": "Debug Tracker",
+                "command": "mcu-debug.debug-tracker-vscode.debugLevel",
+                "title": "Set debug log level"
             }
-        ]
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "MCU Debug Tracker",
+            "properties": {
+                "mcu-debug.debug-tracker-vscode.debugLevel": {
+                    "type": "number",
+                    "default": 0,
+                    "description": "Sets the amount of logging done to the 'OUTPUT->Mcu-debug Tracker' window",
+                    "minimum": 0,
+                    "maximum": 2,
+                    "multipleOf": 1
+                }
+            }
+        }
     },
     "scripts": {
         "vscode:prepublish": "npm run package",
@@ -50,8 +71,7 @@
         "@types/glob": "^7.2.0",
         "@types/mocha": "^9.1.1",
         "@types/node": "16.x",
-        "@types/uuid": "^8.3.4",
-        "@types/vscode": "^1.70.0",
+        "@types/vscode": "^1.75.0",
         "@typescript-eslint/eslint-plugin": "^5.31.0",
         "@typescript-eslint/parser": "^5.31.0",
         "@vscode/test-electron": "^2.1.5",
@@ -64,7 +84,6 @@
         "webpack-cli": "^4.10.0"
     },
     "dependencies": {
-        "@vscode/debugprotocol": "^1.57.0",
-        "uuid": "^9.0.0"
+        "@vscode/debugprotocol": "^1.59.0"
     }
 }

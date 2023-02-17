@@ -2,7 +2,7 @@
     "name": "debug-tracker-vscode",
     "displayName": "debug-tracker-vscode",
     "description": "A generic debug tracker that provides API/Event services for other extensions. It exposes the API as an extension or you can embed the library in your extension",
-    "version": "0.0.12",
+    "version": "0.0.14",
     "repository": {
         "type": "git",
         "url": "https://github.com/mcu-debug/debug-tracker-vscode.git"
@@ -36,7 +36,7 @@
         "@types/glob": "^7.2.0",
         "@types/mocha": "^9.1.1",
         "@types/node": "16.x",
-        "@types/vscode": "^1.70.0",
+        "@types/vscode": "^1.75.0",
         "@typescript-eslint/eslint-plugin": "^5.31.0",
         "@typescript-eslint/parser": "^5.31.0",
         "@vscode/test-electron": "^2.1.5",
@@ -49,7 +49,6 @@
         "webpack-cli": "^4.10.0"
     },
     "dependencies": {
-        "@vscode/debugprotocol": "^1.57.0",
-        "pure-uuid": "^1.6.2"
+        "@vscode/debugprotocol": "^1.59.0"
     }
 }
