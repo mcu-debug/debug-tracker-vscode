@@ -254,9 +254,15 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
     static context: vscode.ExtensionContext;
     static dbgChannel?: vscode.OutputChannel | vscode.LogOutputChannel | undefined;
     static dbgLevel: 0 | 1 | 2 = 0;
-    public static register(cxt: vscode.ExtensionContext, dbgChannel?: vscode.OutputChannel | vscode.LogOutputChannel): DebugTrackerFactory {
+    public static register(
+        cxt: vscode.ExtensionContext,
+        dbgChannel?: vscode.OutputChannel | vscode.LogOutputChannel,
+        dbgLevel?: 0 | 1 | 2): DebugTrackerFactory {
         if (dbgChannel) {
             DebugTrackerFactory.dbgChannel = dbgChannel;
+        }
+        if (dbgLevel !== undefined) {
+            DebugTrackerFactory.dbgLevel = dbgLevel;
         }
         DebugTrackerFactory.context = cxt;
         const elements = cxt.extensionUri.path.split(/[\\/]+/);

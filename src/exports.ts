@@ -200,8 +200,11 @@ export interface IDebugTracker {
 
 export class DebugTracker implements IDebugTracker {
     private tracker: DebugTrackerFactory;
-    constructor(private context: vscode.ExtensionContext, dbgChannel?: vscode.OutputChannel | vscode.LogOutputChannel) {
-        this.tracker = DebugTrackerFactory.register(context, dbgChannel);
+    constructor(
+        private context: vscode.ExtensionContext,
+        dbgChannel?: vscode.OutputChannel | vscode.LogOutputChannel,
+        dbgLevel?: 0 | 1 | 2) {
+        this.tracker = DebugTrackerFactory.register(context, dbgChannel, dbgLevel);
     }
 
     public subscribe(arg: IDebuggerTrackerSubscribeArg): IDebuggerSubscription | string {
@@ -221,6 +224,13 @@ export class DebugTracker implements IDebugTracker {
 
     public getSessionInfo(sessionId: string): ITrackedDebugSession | undefined {
         return this.tracker.getSessionInfo(sessionId);
+    }
+
+    public setDbgChannel(
+        dbgChannel: vscode.OutputChannel | vscode.LogOutputChannel,
+        dbgLevel: 0 | 1 | 2) {
+        DebugTrackerFactory.dbgChannel = dbgChannel;
+        DebugTrackerFactory.dbgLevel = dbgLevel;
     }
 
     public static getTrackerExtension(callerExtName: string, maxTimeout: number = 10 * 1000): Promise<IDebugTracker | Error> {
